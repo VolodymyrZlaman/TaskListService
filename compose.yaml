@@ -1,0 +1,6 @@
+﻿services:
+  tasklistservice.api:
+    image: tasklistservice.api
+    build:
+      context: .
+      dockerfile: TaskListService.API/Dockerfile
