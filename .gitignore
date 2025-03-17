@@ -368,3 +368,11 @@ FodyWeavers.xsd
 # Draw.io
 *.bkp
 *.dtmp
+
+
+*.name
+*encodings.xml
+*indexLayout.xml
+*projectSettingsUpdater.xml
+*vcs.xml
+*workspace.xml
