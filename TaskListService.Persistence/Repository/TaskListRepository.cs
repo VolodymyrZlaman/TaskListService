@@ -1,51 +1,75 @@
-﻿using MongoDB.Driver;
+﻿using System.Collections;
+using System.Linq.Expressions;
 using TaskListService.Application.Contracts.Persistence;
 using TaskListService.Application.Exceptions;
-using TaskListService.Persistence.Extentions;
+using TaskListService.Persistence.Context;
+using TaskService.Domain.Common;
 using TaskService.Domain.Entities;
 
 namespace TaskListService.Persistence.Repository;
 
-public class TaskListRepository(IMongoDatabase database) : BaseRepository<TaskList>(database), ITaskListRepository
+public class TaskListRepository(IDbContext context) : BaseRepository<TaskList>(context), ITaskListRepository
 {
-    private readonly IMongoCollection<TaskList> _collection = database.GetCollection<TaskList>("TaskList");
-    
-    public async Task ShareTaskListAsync(string taskListId, string? targetUserId, string userId)
-    {
-        var filter = _collection.CreateTaskListFilter(taskListId,  targetUserId, userId, true);
-        var builder = Builders<TaskList>.Update.AddToSet(d => d.SharedWith, targetUserId);
-        
-        var result = await _collection.UpdateOneAsync(filter, builder);
+    private readonly IDbContext _context = context;
 
-        if (result.ModifiedCount == 0)
+    public async Task<Result> ShareTaskListAsync(string taskListId, string targetUserId, string userId)
+    {
+        // Get the task list
+        var taskList = await _context.GetOneAsync<TaskList>(
+            x => x.Id == taskListId && 
+                 (x.OwnerId == userId || x.SharedWith.Contains(userId)) &&
+                 x.OwnerId != targetUserId &&
+                 !x.SharedWith.Contains(targetUserId));
+
+        if (taskList.IsFailure)
         {
-            throw new NotFoundException("Unable to share the task list.", taskListId);
+            Result.Failure(new NotFoundException("Unable to share the task list.", taskListId));
         }
+
+        // Add target user to shared list
+        taskList.Value?.SharedWith.Add(targetUserId);
+
+        // Update the task list
+        return await _context.UpdateAsync(
+            x => x.Value != null && x.Value.Id == taskListId,
+            taskList);
     }
 
-    public async Task<IEnumerable<string>> GetSharedUsersAsync(string taskListId, string userId)
+    public async Task<Result<IEnumerable<string>>> GetSharedUsersAsync(string taskListId, string userId)
     {
-        var filter = _collection.CreateTaskListFilter(taskListId, null, userId);
-        var result = await _collection.Find(filter).FirstOrDefaultAsync();
+        var taskList = await _context.GetOneAsync<TaskList>(
+            x => x.Id == taskListId && 
+                 (x.OwnerId == userId || x.SharedWith.Contains(userId)));
 
-        if (result == null)
+        if (taskList.IsFailure)
         {
-            throw new NotFoundException("Unable to get the task list.", taskListId);
+            return Result<IEnumerable<string>>.Failure(new NotFoundException("Unable to get the task list.", taskListId));
         }
 
-        return result.SharedWith;
+        return Result<IEnumerable<string>>.Success(taskList.Value.SharedWith);
     }
 
-    public async Task UnshareTaskListAsync(string taskListId, string targetUserId, string userId)
+    public async Task<Result> UnshareTaskListAsync(string taskListId, string targetUserId, string userId)
     {
-        var filter = _collection.CreateTaskListFilter(taskListId, targetUserId,userId);
-        var builder = Builders<TaskList>.Update.Pull(d => d.SharedWith, targetUserId);
-        
-        var result = await _collection.UpdateOneAsync(filter, builder);
+        // Get the task list
+        var taskList = await _context.GetOneAsync<TaskList>(
+            x => x.Id == taskListId && 
+                 (x.OwnerId == userId || x.SharedWith.Contains(userId)));
 
-        if (result.ModifiedCount == 0)
+        if (taskList.IsFailure)
         {
-            throw new NotFoundException("Unable to unshare the task list.", taskListId);
+            return Result.Failure(new NotFoundException("Unable to unshare the task list.", taskListId));
         }
+
+        // Remove target user from shared list
+        if (taskList.Value.SharedWith.Remove(targetUserId))
+        {
+            // Update the task list only if the user was actually removed
+            return await _context.UpdateAsync<TaskList>(
+                x => x.Id == taskListId,
+                taskList.Value);
+        }
+
+        return Result.Failure(new NotFoundException("User was not shared with this task list.", taskListId));
     }
 }

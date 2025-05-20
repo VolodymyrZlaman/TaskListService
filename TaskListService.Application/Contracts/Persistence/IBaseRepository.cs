@@ -1,14 +1,15 @@
 ﻿using System.Linq.Expressions;
+using TaskService.Domain.Common;
 
 namespace TaskListService.Application.Contracts.Persistence;
 
 public interface IBaseRepository<T> where T : class
 {
-    Task<T?> GetOneByFilterAsync(
+    Task<Result<T?>> GetOneByFilterAsync(
         Expression<Func<T, bool>> filter,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<T>> GetByFilterAsync(
+    Task<Result<PagedResult<T>>> GetByFilterAsync(
         Expression<Func<T, bool>> filter,
         bool descending,
         int page,
@@ -16,19 +17,14 @@ public interface IBaseRepository<T> where T : class
         Expression<Func<T, object>>? sortBy = null,
         CancellationToken cancellationToken = default);
 
-    Task<T> CreateAsync(T entity, CancellationToken cancellationToken = default);
+    Task<Result<T>> CreateAsync(T entity, CancellationToken cancellationToken = default);
 
-    Task UpdateAsync(
+    Task<Result> UpdateAsync(
         Expression<Func<T, bool>> filter,
         object updateObject,
         CancellationToken cancellationToken = default);
 
-    Task DeleteAsync(
+    Task<Result<bool>> DeleteAsync(
         Expression<Func<T, bool>> filter,
-        CancellationToken cancellationToken = default);
-
-    Task EnsureIndexAsync(
-        Expression<Func<T, object>> field,
-        bool unique = false,
         CancellationToken cancellationToken = default);
 }

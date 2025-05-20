@@ -23,4 +23,8 @@
       <ProjectReference Include="..\TaskListService.Application\TaskListService.Application.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="TaskList\" />
+    </ItemGroup>
+
 </Project>

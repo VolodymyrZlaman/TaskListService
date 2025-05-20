@@ -1,20 +1,30 @@
 ﻿using System.Linq.Expressions;
-using MongoDB.Driver;
 using TaskListService.Application.Contracts.Persistence;
-using TaskService.Domain.Entities;
+using TaskListService.Persistence.Context;
+using TaskService.Domain.Common;
 
 namespace TaskListService.Persistence.Repository;
 
 public class BaseRepository<T> : IBaseRepository<T> where T : class
 {
-    private readonly IMongoCollection<T> _collection;
+    private readonly IDbContext _context;
 
-    protected BaseRepository(IMongoDatabase database)
+    protected BaseRepository(IDbContext context)
     {
-        _collection = database.GetCollection<T>(typeof(T).Name);
+        _context = context;
     }
 
-    public async Task<IEnumerable<T>> GetByFilterAsync(
+    public virtual async Task<Result<T>> CreateAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        return await _context.AddAsync(entity, cancellationToken);
+    }
+
+    public virtual async Task<Result<bool>> DeleteAsync(Expression<Func<T, bool>> filter, CancellationToken cancellationToken = default)
+    {
+        return await _context.DeleteAsync(filter, cancellationToken);
+    }
+
+    public virtual async Task<Result<PagedResult<T>>> GetByFilterAsync(
         Expression<Func<T, bool>> filter,
         bool descending,
         int page,
@@ -22,74 +32,34 @@ public class BaseRepository<T> : IBaseRepository<T> where T : class
         Expression<Func<T, object>>? sortBy = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _collection.Find(filter);
-        if (sortBy != null)
-        {
-            query = descending ? query.SortByDescending(sortBy) : query.SortBy(sortBy);
-        }
-
-        return await query
-            .Skip((page - 1) * pageSize)
-            .Limit(pageSize)
-            .ToListAsync(cancellationToken);
+        return await _context.GetPagedAsync(
+            filter,
+            page,
+            pageSize,
+            sortBy,
+            descending,
+            cancellationToken);
     }
 
-    public async Task<T?> GetOneByFilterAsync(
-        Expression<Func<T, bool>> filter, 
+    public virtual async Task<Result<T?>> GetOneByFilterAsync(
+        Expression<Func<T, bool>> filter,
         CancellationToken cancellationToken = default)
     {
-        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        return await _context.GetOneAsync(filter, cancellationToken);
     }
 
-    public async Task<T> CreateAsync(T entity, CancellationToken cancellationToken = default)
-    {
-        await _collection.InsertOneAsync(entity, cancellationToken: cancellationToken);
-        return entity;
-    }
-
-    public async Task UpdateAsync(
+    public virtual async Task<Result> UpdateAsync(
         Expression<Func<T, bool>> filter,
         object updateObject,
         CancellationToken cancellationToken = default)
     {
-        var properties = updateObject.GetType().GetProperties()
-            .Where(p => p.GetValue(updateObject) != null)
-            .ToList();
-
-        if (!properties.Any()) return;
-
-        var updateDefinitions = properties
-            .Select(p => Builders<T>.Update.Set(p.Name, p.GetValue(updateObject)!))
-            .ToList();
-
-        var updateDefinition = Builders<T>.Update.Combine(updateDefinitions);
-        var result = await _collection.UpdateOneAsync(filter, updateDefinition, cancellationToken: cancellationToken);
-
-        if (result.MatchedCount == 0)
+        if (updateObject is T entity)
         {
-            throw new UnauthorizedAccessException("You don't have permission to update this item.");
+            return await _context.UpdateAsync(filter, entity, cancellationToken);
         }
-    }
-
-    public async Task DeleteAsync(
-        Expression<Func<T, bool>> filter, 
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _collection.DeleteOneAsync(filter, cancellationToken);
-        if (result.DeletedCount == 0)
+        else
         {
-            throw new UnauthorizedAccessException("You don't have permission to delete this item.");
+            return Result.Failure("Something went wrong");
         }
-    }
-
-    public async Task EnsureIndexAsync(
-        Expression<Func<T, object>> field,
-        bool unique = false,
-        CancellationToken cancellationToken = default)
-    {
-        var indexKeys = Builders<T>.IndexKeys.Ascending(field);
-        var indexOptions = new CreateIndexOptions { Unique = unique };
-        var indexModel = new CreateIndexModel<T>(indexKeys, indexOptions);
-        await _collection.Indexes.CreateOneAsync(indexModel, cancellationToken: cancellationToken);
     }
 }

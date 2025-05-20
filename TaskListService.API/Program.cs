@@ -1,5 +1,4 @@
 using Scalar.AspNetCore;
-using TaskListService.API.Middleware;
 using TaskListService.Application;
 using TaskListService.Persistence;
 
@@ -12,7 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 builder.Services.AddApplicationServices();
-builder.Services.AddPersistanceService(builder.Configuration);
+builder.Services.AddPersistenceService(builder.Configuration);
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -29,7 +28,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCustomExceptionHandler();
 app.UseAuthorization();
 app.UseHttpsRedirection();
 app.MapControllers();
