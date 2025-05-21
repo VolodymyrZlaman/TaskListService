@@ -3,6 +3,7 @@ using TaskListService.API.Extensions;
 using TaskListService.API.Services;
 using TaskListService.Application;
 using TaskListService.Application.Contracts.Infrastructure;
+using TaskListService.Infrastructure;
 using TaskListService.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddApplicationServices();
 builder.Services.AddPersistenceService(builder.Configuration);
+builder.Services.AddInfrastructureServices(builder.Configuration);
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -31,6 +33,8 @@ if (app.Environment.IsDevelopment())
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
     });
 }
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Add user validation middleware

@@ -1,6 +1,9 @@
-﻿using AutoMapper;
+﻿using System.Text.Json;
+using AutoMapper;
+using Confluent.Kafka;
 using FluentValidation;
 using TaskListService.Application.Contracts.Aplication;
+using TaskListService.Application.Contracts.Infrastructure;
 using TaskListService.Application.Contracts.Persistence;
 using TaskListService.Application.Services.Commands;
 using TaskListService.Application.Services.Queries;
@@ -11,7 +14,7 @@ using TaskService.Domain.Entities;
 
 namespace TaskListService.Application.Services;
 
-public class TaskListService(ITaskListRepository repository, IMapper mapper ) : ITaskListService
+public class TaskListService(ITaskListRepository repository, IMapper mapper , IKafkaProducer producer ) : ITaskListService
 {
     public async Task<Result<TaskListItemVm>> CreateTaskListAsync(CreateTaskListCommand command)
     {
@@ -25,9 +28,19 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper ) : 
         var taskList = mapper.Map<TaskList>(command);
         taskList.CreationDate = DateTime.Now;
         var response = await repository.CreateAsync(taskList);
+
+        if (response.IsFailure)
+            return Result<TaskListItemVm>.Failure("Internal server error");
         
-        return response.IsFailure ? Result<TaskListItemVm>.Failure("Internal server error") : Result<TaskListItemVm>.Success(mapper.Map<TaskListItemVm>(response.Value));
+        var result = await producer.PublishAsync("taskList-topic", new Message<string, string>
+        {
+            Key = response.Value.Id,
+            Value = JsonSerializer.Serialize(response.Value)
+        });
+        
+        return Result<TaskListItemVm>.Success(mapper.Map<TaskListItemVm>(response.Value));
     }
+    
 
     public async Task<Result<TaskListItemVm>> GetTaskListItemAsync(string taskListId, string userId)
     {
