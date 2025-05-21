@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{662E2993
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskListService.Application.Tests", "TaskListService.Application.Tests\TaskListService.Application.Tests.csproj", "{EC125B5B-F7D5-43AA-ADA5-A3BD38A39E41}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskListService.Infrastructure", "TaskListService.Infrastructure\TaskListService.Infrastructure.csproj", "{508D51FC-25AC-4660-92A2-9462A732D028}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,7 @@ Global
 		{6A5C61D5-4738-42C8-AD2F-764CC3CA1705} = {A72C6456-CF49-4632-988A-63C96B84986E}
 		{BDFE2FB5-4CED-48CF-B0D1-0DDCA957CACF} = {6A5C61D5-4738-42C8-AD2F-764CC3CA1705}
 		{EC125B5B-F7D5-43AA-ADA5-A3BD38A39E41} = {662E2993-BB48-4EEE-A687-B3E9AB4937F2}
+		{508D51FC-25AC-4660-92A2-9462A732D028} = {7124830D-2B8A-43EB-B524-2757AF47FB26}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{699FD5BE-E2E7-4D5F-80A2-0CA313A72D78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -61,5 +64,9 @@ Global
 		{EC125B5B-F7D5-43AA-ADA5-A3BD38A39E41}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC125B5B-F7D5-43AA-ADA5-A3BD38A39E41}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC125B5B-F7D5-43AA-ADA5-A3BD38A39E41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{508D51FC-25AC-4660-92A2-9462A732D028}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{508D51FC-25AC-4660-92A2-9462A732D028}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{508D51FC-25AC-4660-92A2-9462A732D028}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{508D51FC-25AC-4660-92A2-9462A732D028}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
