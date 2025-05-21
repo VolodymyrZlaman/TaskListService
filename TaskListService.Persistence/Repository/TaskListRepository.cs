@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Linq.Expressions;
-using TaskListService.Application.Contracts.Persistence;
-using TaskListService.Application.Exceptions;
+﻿using TaskListService.Application.Contracts.Persistence;
 using TaskListService.Persistence.Context;
 using TaskService.Domain.Common;
 using TaskService.Domain.Entities;
@@ -52,11 +49,6 @@ public class TaskListRepository(IDbContext context) : BaseRepository<TaskList>(c
             return Result.Failure("TaskList not found");
         if (taskList.Value.OwnerId != userId && !taskList.Value.SharedWith.Contains(userId))
             return Result.Failure("You don't have access to this TaskList");
-
-        if (taskList.IsFailure)
-        {
-            return Result.Failure(new NotFoundException("Unable to unshare the task list.", taskListId));
-        }
         
         if (taskList.Value.SharedWith.Remove(targetUserId))
         {
@@ -64,7 +56,9 @@ public class TaskListRepository(IDbContext context) : BaseRepository<TaskList>(c
                 x => x.Id == taskListId,
                 taskList.Value);
         }
-
-        return Result.Failure(new NotFoundException("User was not shared with this task list.", userId));
+        else
+        {
+            return Result.Failure("You don't have access to this TaskList");
+        }
     }
 }

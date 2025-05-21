@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
+using FluentValidation;
 using TaskListService.Application.Contracts.Aplication;
 using TaskListService.Application.Contracts.Persistence;
-using TaskListService.Application.Exceptions;
 using TaskListService.Application.Services.Commands;
 using TaskListService.Application.Services.Queries;
 using TaskListService.Application.Services.Vm;
@@ -19,7 +19,7 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper ) : 
         var validationResult = await validator.ValidateAsync(command);
         
         if (validationResult.Errors.Count > 0)
-            return Result<TaskListItemVm>.Failure(new ValidationException(validationResult));
+            return Result<TaskListItemVm>.Failure(new ValidationException(validationResult.Errors));
         
 
         var taskList = mapper.Map<TaskList>(command);
@@ -41,7 +41,7 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper ) : 
         var validationResult = await validator.ValidateAsync(query);
         
         if (validationResult.Errors.Count > 0)
-            return Result<PagedResult<ShortTaskListItemVm>>.Failure(new ValidationException(validationResult));
+            return Result<PagedResult<ShortTaskListItemVm>>.Failure(new ValidationException(validationResult.Errors));
         
         var taskLists = await repository.GetByFilterAsync(
             x => x.OwnerId == query.UserId || x.SharedWith.Contains(query.UserId),
@@ -59,7 +59,7 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper ) : 
         var validationResult = await validator.ValidateAsync(updateTaskListCommand);
         
         if (validationResult.Errors.Count > 0)
-            return Result.Failure(new ValidationException(validationResult));
+            return Result.Failure(new ValidationException(validationResult.Errors));
         
         var taskList = await repository.GetOneByFilterAsync(x => x.Id == taskListId && (x.OwnerId == userId || x.SharedWith.Contains(userId)));
 
@@ -70,8 +70,11 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper ) : 
                 updateTaskListCommand
             );
         }
-
-        return Result.Failure(new NotFoundException("TaskList not found", taskListId));
+        else
+        {
+            return Result.Failure("Internal server error");
+        }
+        
     }
 
     public async Task<Result<bool>> DeleteTaskListAsync(string taskListId, string userId)
