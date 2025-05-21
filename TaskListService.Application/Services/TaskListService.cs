@@ -30,13 +30,9 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper , IK
         var response = await repository.CreateAsync(taskList);
 
         if (response.IsFailure)
-            return Result<TaskListItemVm>.Failure("Internal server error");
+            return Result<TaskListItemVm>.Failure($"Internal server error. {response.Error}");
         
-        var result = await producer.PublishAsync("taskList-topic", new Message<string, string>
-        {
-            Key = response.Value.Id,
-            Value = JsonSerializer.Serialize(response.Value)
-        });
+        var result = await producer.PublishAsync("taskList-topic", response.Value);
         
         return Result<TaskListItemVm>.Success(mapper.Map<TaskListItemVm>(response.Value));
     }
@@ -45,7 +41,7 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper , IK
     public async Task<Result<TaskListItemVm>> GetTaskListItemAsync(string taskListId, string userId)
     {
         var taskList = await repository.GetOneByFilterAsync( x => x.Id == taskListId && x.OwnerId == userId || x.SharedWith.Contains(userId));
-        return Result<TaskListItemVm>.Success(mapper.Map<TaskListItemVm>(taskList.Value));
+        return !taskList.IsFailure?Result<TaskListItemVm>.Success(mapper.Map<TaskListItemVm>(taskList.Value)): Result<TaskListItemVm>.Failure(taskList.Error);
     }
 
     public async Task<Result<PagedResult<ShortTaskListItemVm>>> GetTaskListsForUserAsync(GetTaskListsForUserQuery query)
@@ -74,20 +70,19 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper , IK
         if (validationResult.Errors.Count > 0)
             return Result.Failure(new ValidationException(validationResult.Errors));
         
-        var taskList = await repository.GetOneByFilterAsync(x => x.Id == taskListId && (x.OwnerId == userId || x.SharedWith.Contains(userId)));
+        var result = await repository.GetOneByFilterAsync(x => x.Id == taskListId && (x.OwnerId == userId || x.SharedWith.Contains(userId)));
 
-        if (!taskList.IsFailure)
+        if (!result.IsFailure)
         {
+            if (result.Value != null) result.Value.Name = updateTaskListCommand.Name;
             return await repository.UpdateAsync(
                 x => x.Id == taskListId && (x.OwnerId == userId || x.SharedWith.Contains(userId)),
-                updateTaskListCommand
+                result.Value
             );
         }
-        else
-        {
-            return Result.Failure("Internal server error");
-        }
-        
+
+        return result;
+
     }
 
     public async Task<Result<bool>> DeleteTaskListAsync(string taskListId, string userId)

@@ -19,9 +19,13 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
             await collection.InsertOneAsync(entity, cancellationToken: cancellationToken);
             return Result<T>.Success(entity);
         }
+        catch (MongoWriteException ex)
+        {
+            return Result<T>.Failure(ex.WriteError.Message);
+        }
         catch (Exception e)
         {
-            return Result<T>.Failure(e);
+            return Result<T>.Failure(e.Message);
         }
     }
 
@@ -35,7 +39,7 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
         }
         catch (Exception e)
         {
-            return Result.Failure(e);
+            return Result.Failure(e.Message);
         }
     }
 
@@ -66,7 +70,7 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
         }
         catch (Exception e)
         {
-            return Result<T?>.Failure(e);
+            return Result<T?>.Failure(e.Message);
         }
 
     }
@@ -90,26 +94,22 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
                     ? query.SortByDescending(orderBy) 
                     : query.SortBy(orderBy);
             }
-
-            // Request one extra item to determine if there are more pages
+            
             var items = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Limit(pageSize + 1)
                 .ToListAsync(cancellationToken);
 
-            bool hasNextPage = items.Count > pageSize;
+            var hasNextPage = items.Count > pageSize;
             var actualItems = hasNextPage ? items.Take(pageSize) : items;
-
-            // Calculate total count based on current page data
+            
             int totalCount;
             if (!hasNextPage)
             {
-                // If we don't have a next page, total count is current page items plus items in previous pages
                 totalCount = (pageNumber - 1) * pageSize + items.Count;
             }
             else
             {
-                // If we have a next page, we know there are at least this many items
                 totalCount = pageNumber * pageSize + 1;
             }
 
@@ -117,7 +117,7 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
         }
         catch (Exception e)
         {
-            return Result<PagedResult<T>>.Failure(e);
+            return Result<PagedResult<T>>.Failure(e.Message);
         }
        
     }
