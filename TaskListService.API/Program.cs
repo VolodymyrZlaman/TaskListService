@@ -1,10 +1,15 @@
 using Scalar.AspNetCore;
+using TaskListService.API.Extensions;
+using TaskListService.API.Services;
 using TaskListService.Application;
+using TaskListService.Application.Contracts.Infrastructure;
 using TaskListService.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -26,9 +31,10 @@ if (app.Environment.IsDevelopment())
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
     });
 }
-
-app.UseHttpsRedirection();
 app.UseAuthorization();
-app.UseHttpsRedirection();
+
+// Add user validation middleware
+app.UseUserValidation();
+
 app.MapControllers();
 app.Run();

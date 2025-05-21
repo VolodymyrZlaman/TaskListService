@@ -81,8 +81,7 @@ public class TaskListService(ITaskListRepository repository, IMapper mapper ) : 
 
     public async Task<Result> ShareTaskListAsync(string taskListId, string targetUserId, string userId)
     {
-        await repository.ShareTaskListAsync(taskListId, targetUserId, userId);
-        return Result.Success();
+        return await repository.ShareTaskListAsync(taskListId, targetUserId, userId);
     }
 
     public async Task<Result<IEnumerable<string>>> GetSharedUsersAsync(string taskListId, string userId)

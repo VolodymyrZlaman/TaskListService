@@ -21,7 +21,7 @@ public interface IDbContext
     /// <summary>
     /// Updates an existing entity in the database
     /// </summary>
-    Task<Result> UpdateAsync<T>(Expression<Func<T, bool>> filter, T entity, CancellationToken cancellationToken = default) where T : class;
+    Task<Result> UpdateAsync<T>(Expression<Func<T, bool>> filter, T entity, CancellationToken cancellationToken = default) where T : class?;
     
     /// <summary>
     /// Deletes an entity from the database

@@ -15,61 +15,56 @@ public class TaskListRepository(IDbContext context) : BaseRepository<TaskList>(c
     public async Task<Result> ShareTaskListAsync(string taskListId, string targetUserId, string userId)
     {
         // Get the task list
-        var taskList = await _context.GetOneAsync<TaskList>(
-            x => x.Id == taskListId && 
-                 (x.OwnerId == userId || x.SharedWith.Contains(userId)) &&
-                 x.OwnerId != targetUserId &&
-                 !x.SharedWith.Contains(targetUserId));
-
-        if (taskList.IsFailure)
-        {
-            Result.Failure(new NotFoundException("Unable to share the task list.", taskListId));
-        }
-
+        var taskList = await _context.GetOneAsync<TaskList>(x => x.Id == taskListId);
+        if (taskList.IsFailure || taskList.Value == null)
+            return Result.Failure("TaskList not found");
+        if (taskList.Value.OwnerId != userId && !taskList.Value.SharedWith.Contains(userId))
+            return Result.Failure("You don't have access to this TaskList");
+        if (taskList.Value.OwnerId == targetUserId)
+            return Result.Failure("Cannot share TaskList with its owner");
+        if (taskList.Value.SharedWith.Contains(targetUserId))
+            return Result.Failure("User already has access to this TaskList");
+        
         // Add target user to shared list
         taskList.Value?.SharedWith.Add(targetUserId);
 
         // Update the task list
         return await _context.UpdateAsync(
-            x => x.Value != null && x.Value.Id == taskListId,
-            taskList);
+            x => x != null && x.Id == taskListId,
+            taskList.Value);
     }
 
     public async Task<Result<IEnumerable<string>>> GetSharedUsersAsync(string taskListId, string userId)
     {
-        var taskList = await _context.GetOneAsync<TaskList>(
-            x => x.Id == taskListId && 
-                 (x.OwnerId == userId || x.SharedWith.Contains(userId)));
-
-        if (taskList.IsFailure)
-        {
-            return Result<IEnumerable<string>>.Failure(new NotFoundException("Unable to get the task list.", taskListId));
-        }
+        var taskList = await _context.GetOneAsync<TaskList>(x => x.Id == taskListId);
+        if (taskList.IsFailure || taskList.Value == null)
+            return Result<IEnumerable<string>>.Failure("TaskList not found");
+        if (taskList.Value.OwnerId != userId && !taskList.Value.SharedWith.Contains(userId))
+            return Result<IEnumerable<string>>.Failure("You don't have access to this TaskList");
 
         return Result<IEnumerable<string>>.Success(taskList.Value.SharedWith);
     }
 
     public async Task<Result> UnshareTaskListAsync(string taskListId, string targetUserId, string userId)
     {
-        // Get the task list
-        var taskList = await _context.GetOneAsync<TaskList>(
-            x => x.Id == taskListId && 
-                 (x.OwnerId == userId || x.SharedWith.Contains(userId)));
+        var taskList = await _context.GetOneAsync<TaskList>(x => x.Id == taskListId);
+        if (taskList.IsFailure || taskList.Value == null)
+            return Result.Failure("TaskList not found");
+        if (taskList.Value.OwnerId != userId && !taskList.Value.SharedWith.Contains(userId))
+            return Result.Failure("You don't have access to this TaskList");
 
         if (taskList.IsFailure)
         {
             return Result.Failure(new NotFoundException("Unable to unshare the task list.", taskListId));
         }
-
-        // Remove target user from shared list
+        
         if (taskList.Value.SharedWith.Remove(targetUserId))
         {
-            // Update the task list only if the user was actually removed
-            return await _context.UpdateAsync<TaskList>(
+            return await _context.UpdateAsync(
                 x => x.Id == taskListId,
                 taskList.Value);
         }
 
-        return Result.Failure(new NotFoundException("User was not shared with this task list.", taskListId));
+        return Result.Failure(new NotFoundException("User was not shared with this task list.", userId));
     }
 }

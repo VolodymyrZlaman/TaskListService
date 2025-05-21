@@ -27,9 +27,16 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
 
     public async Task<Result> UpdateAsync<T>(Expression<Func<T, bool>> filter, T entity, CancellationToken cancellationToken = default) where T : class
     {
-        var collection = database.GetCollection<T>(typeof(T).Name);
-        var result = await collection.ReplaceOneAsync(filter, entity, new ReplaceOptions { IsUpsert = false }, cancellationToken);
-        return result.IsModifiedCountAvailable ? Result.Success() : Result.Failure(result.ToString());
+        try
+        {
+            var collection = database.GetCollection<T>(typeof(T).Name);
+            var result = await collection.ReplaceOneAsync(filter, entity, new ReplaceOptions { IsUpsert = false }, cancellationToken);
+            return result.IsModifiedCountAvailable ? Result.Success() : Result.Failure(result.ToString());
+        }
+        catch (Exception e)
+        {
+            return Result.Failure(e);
+        }
     }
 
     public async Task<Result<bool>> DeleteAsync<T>(Expression<Func<T, bool>> filter,
@@ -54,8 +61,8 @@ public class MongoDbContext(IMongoDatabase database) : IDbContext
             var collection = database.GetCollection<T>(typeof(T).Name);
         
             var result =  await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-        
-            return Result<T?>.Success(result);
+            
+            return result == null ? Result<T?>.Failure("Item was not found") : Result<T?>.Success(result);
         }
         catch (Exception e)
         {
